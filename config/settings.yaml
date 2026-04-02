@@ -1,0 +1,116 @@
+isos:
+  ERCOT:
+    timezone: "US/Central"
+    base_price: 35
+    data_source: "ercot_public_api"
+    node: "HB_HOUSTON"
+    volatility: 45
+    description: "Electric Reliability Council of Texas"
+
+  PJM:
+    timezone: "US/Eastern"
+    base_price: 40
+    data_source: "pjm_dataminer"
+    node: "WESTERN HUB"
+    volatility: 30
+    description: "PJM Interconnection (Mid-Atlantic)"
+
+  CAISO:
+    timezone: "US/Pacific"
+    base_price: 45
+    data_source: "caiso_oasis"
+    node: "TH_SP15_GEN-APND"
+    volatility: 35
+    description: "California Independent System Operator"
+
+  MISO:
+    timezone: "US/Central"
+    base_price: 32
+    data_source: "miso_api"
+    node: "INDIANA.HUB"
+    volatility: 28
+    description: "Midcontinent Independent System Operator"
+
+  NYISO:
+    timezone: "US/Eastern"
+    base_price: 45
+    data_source: "nyiso_api"
+    node: "ZONE J"
+    volatility: 38
+    description: "New York Independent System Operator"
+
+  ISO-NE:
+    timezone: "US/Eastern"
+    base_price: 42
+    data_source: "isone_api"
+    node: "INTERNAL_HUB"
+    volatility: 32
+    description: "ISO New England"
+
+  SPP:
+    timezone: "US/Central"
+    base_price: 28
+    data_source: "spp_api"
+    node: "SPS"
+    volatility: 25
+    description: "Southwest Power Pool"
+
+  IESO:
+    timezone: "Canada/Eastern"
+    base_price: 25
+    data_source: "ieso_api"
+    node: "ONTARIO"
+    volatility: 20
+    description: "Independent Electricity System Operator (Ontario)"
+
+weather:
+  api: "open-meteo"
+  base_url: "https://archive-api.open-meteo.com/v1/archive"
+  locations:
+    ERCOT:
+      lat: 29.76
+      lon: -95.36
+      city: "Houston"
+    PJM:
+      lat: 39.95
+      lon: -75.17
+      city: "Philadelphia"
+    CAISO:
+      lat: 34.05
+      lon: -118.24
+      city: "Los Angeles"
+    MISO:
+      lat: 41.88
+      lon: -87.63
+      city: "Chicago"
+    NYISO:
+      lat: 40.71
+      lon: -74.01
+      city: "New York"
+    ISO-NE:
+      lat: 42.36
+      lon: -71.06
+      city: "Boston"
+    SPP:
+      lat: 35.47
+      lon: -97.52
+      city: "Oklahoma City"
+    IESO:
+      lat: 43.65
+      lon: -79.38
+      city: "Toronto"
+
+analysis:
+  default_lookback_days: 365
+  rolling_window: 20
+  peak_hours:
+    start: 7
+    end: 22
+  transaction_cost_per_mwh: 0.05
+  default_position_size_mw: 50
+
+data:
+  cache_dir: "data/cache"
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  eia_api_base: "https://api.eia.gov/v2/electricity/rto"
