@@ -8,9 +8,27 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
+
+
+def sanitize(obj):
+    """Recursively convert numpy types to native Python for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [sanitize(v) for v in obj]
+    if isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating,)):
+        return float(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
 
 from src.data.fetcher import ISODataFetcher
 from src.data.weather import WeatherFetcher
@@ -86,7 +104,7 @@ def get_spread(iso_a: str = "ERCOT", iso_b: str = "PJM", days: int = 365):
             }
             for i, (_, row) in enumerate(spread_df.iterrows())
         ],
-        "stats": analyzer.spread_summary(spread_df["spread"]),
+        "stats": sanitize(analyzer.spread_summary(spread_df["spread"])),
     }
 
 
@@ -145,7 +163,7 @@ def get_risk(iso_a: str = "ERCOT", iso_b: str = "PJM", days: int = 365):
     positions = {f"{iso_a}-{iso_b}": 1}
     stress_results = stress.run_all_scenarios(positions)
 
-    return {
+    return sanitize({
         "risk_report": report,
         "stress_tests": stress_results.to_dict(orient="records"),
-    }
+    })
