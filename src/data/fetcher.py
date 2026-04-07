@@ -345,3 +345,85 @@ class ISODataFetcher:
             df = self.fetch(iso, start_date, end_date)
             frames.append(df)
         return pd.concat(frames, ignore_index=True)
+
+    def generate_synthetic_5min(self, iso: str, days: int = 30) -> pd.DataFrame:
+        """
+        Generate 5-minute granularity synthetic data for intraday analysis.
+        Captures price spikes and ramp events that hourly data misses.
+        """
+        np.random.seed(hash(f"5min_{iso}") % (2**31))
+        iso_config = self.config["isos"][iso]
+        base_price = iso_config["base_price"]
+        volatility = iso_config["volatility"]
+
+        intervals = days * 24 * 12  # 12 five-minute intervals per hour
+        timestamps = pd.date_range(
+            end=pd.Timestamp.now(tz="UTC").normalize(),
+            periods=intervals,
+            freq="5min",
+            tz="UTC",
+        )
+
+        # OU process at 5-min resolution
+        theta = 0.15
+        mu = base_price
+        sigma = volatility * 0.01 * base_price
+        dt = 1.0 / (24 * 12)
+
+        prices = np.zeros(intervals)
+        prices[0] = mu
+        noise = np.random.randn(intervals)
+
+        for t in range(1, intervals):
+            prices[t] = (
+                prices[t - 1]
+                + theta * (mu - prices[t - 1]) * dt
+                + sigma * np.sqrt(dt) * noise[t]
+            )
+
+        # Diurnal pattern
+        hour_frac = np.array([ts.hour + ts.minute / 60 for ts in timestamps])
+        diurnal = 8 * np.sin(np.pi * (hour_frac - 6) / 16)
+        diurnal = np.where((hour_frac >= 6) & (hour_frac <= 22), diurnal, -3)
+
+        # Intraday volatility spikes (ramp events)
+        spike_prob = 0.001
+        spikes = np.where(
+            np.random.rand(intervals) < spike_prob,
+            np.random.exponential(scale=30, size=intervals),
+            0,
+        )
+
+        # 5-min ramp events (sharp price moves over 15-30 min)
+        ramp_prob = 0.0005
+        for i in range(intervals):
+            if np.random.rand() < ramp_prob:
+                ramp_len = np.random.randint(3, 7)  # 15-35 min ramp
+                ramp_mag = np.random.randn() * 15
+                end = min(i + ramp_len, intervals)
+                prices[i:end] += np.linspace(0, ramp_mag, end - i)
+
+        lmp = prices + diurnal + spikes
+        lmp = np.maximum(lmp, -10)
+
+        df = pd.DataFrame({
+            "timestamp": timestamps,
+            "iso": iso,
+            "node": iso_config["node"],
+            "lmp": np.round(lmp, 2),
+            "energy_component": np.round(lmp * 0.85, 2),
+            "congestion_component": np.round(lmp * 0.10, 2),
+            "loss_component": np.round(lmp * 0.05, 2),
+        })
+
+        return df
+
+    def fetch_5min(self, iso: str, days: int = 30) -> pd.DataFrame:
+        """Fetch or generate 5-minute granularity data."""
+        cache_key = self._cache_key(iso, f"5min_{days}", "5min")
+        cached = self._load_cache(iso, f"5min_{days}", "5min")
+        if cached is not None:
+            return cached
+        df = self.generate_synthetic_5min(iso, days=days)
+        self._save_cache(df, iso, f"5min_{days}", "5min")
+        return df
